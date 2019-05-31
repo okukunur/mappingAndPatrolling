@@ -1,0 +1,85 @@
+<launch>
+
+  <!-- setting environment variable so Gazebo knows where to look -->
+  <env name="GAZEBO_MODEL_PATH" value="$(find lab4_pkg)/models/" />
+
+  <!-- Launch parameters of robot used in navigation -->
+  <param name="maxSpeed"  type="double" value="2" />
+  <param name="delayT"    type="double" value="2.0" />
+  <param name="distanceD" type="double" value="1.0" />
+  <param name="linear/x/max_acceleration" type="double" value="7.0" />
+  <param name="linear/x/has_acceleration_limits" type="bool" value="true" />
+
+  <param name="foo" value="$(optenv JACKAL_LASER 0)" />
+  <param name="foo1" value="$(optenv JACKAL_FLEA3 0)" />
+
+  <env name="JACKAL_LASER" value="0" />
+
+  <arg name="use_sim_time" default="true" />
+  <arg name="gui" default="true" />
+  <arg name="headless" default="false" />
+  <arg name="world_name" value="$(find lab4_pkg)/worlds/jackal_race.world"/>
+  <arg name="default_config" value="base"/> 
+
+  <!-- Configuration of Jackal which you would like to simulate.
+       See jackal_description for details. -->
+  <arg name="config" default="$(arg default_config)" />
+
+  <!-- Launch Gazebo with the specified world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="debug" value="0" />
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="use_sim_time" value="$(arg use_sim_time)" />
+    <arg name="headless" value="$(arg headless)" />
+    <arg name="world_name" value="$(arg world_name)" />
+  </include>
+  
+  <!-- Load Jackal's description, controllers, and teleop nodes. -->
+  <include file="$(find jackal_description)/launch/description.launch">
+    <arg name="config" value="$(arg config)" />
+  </include>
+
+  <include file="$(find jackal_control)/launch/control.launch" />
+  <include file="$(find jackal_navigation)/launch/include/gmapping.launch" />
+  <include file="$(find jackal_control)/launch/teleop.launch">  
+    <arg name="joystick" value="false"/>
+  </include>
+  
+  <!--Making sure that the laserscan starts right away as well as the twist filtering -->
+
+  <!-- Uncomment line below for wall following and make sure line following is commented -->
+  <!-- <node pkg="lab4_pkg" type="laser_scan.py" name="laser_based_control" /> -->
+
+  <!-- Uncomment below line for line following and make sure to comment above line for wall following -->
+  <node pkg="lab4_pkg" type="line_follower.py" name="eyes" />
+
+
+   <node name="controller" pkg="pid" type="controller" ns="linear_pid" output="screen" >
+      <param name="node_name" value="linear_pid" />
+      <param name="Kp" value="0.86" />
+      <param name="Ki" value="0.86" />
+      <param name="Kd" value="0.001" />
+      <param name="Kp_scale" value="0.1" />
+      <param name="Ki_scale" value="1.0" />
+      <param name="Kd_scale" value="0.1" />
+      <param name="max_loop_frequency" value="1000.0" />
+      <param name="min_loop_frequency" value="1.0" />
+      </node>
+
+   <node name="controller" pkg="pid" type="controller" ns="angular_pid" output="screen" >
+      <param name="node_name" value="angular_pid" />
+      <param name="Kp" value="1.2" />
+      <param name="Ki" value="0.2" />
+      <param name="Kd" value="0.0" />
+      <param name="Kp_scale" value="0.1" />
+      <param name="Ki_scale" value="1.0" />
+      <param name="Kd_scale" value="0.1" />
+      <param name="max_loop_frequency" value="1000.0" />
+      <param name="min_loop_frequency" value="1.0" />
+      </node>
+
+  <node pkg="lab4_pkg" type="pidWrapper.py" name="buffer" />
+
+  <!-- Spawn Jackal -->
+  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" args="-urdf -model jackal -param robot_description -x -7 -y 6 -z 1.0" />
+</launch>
